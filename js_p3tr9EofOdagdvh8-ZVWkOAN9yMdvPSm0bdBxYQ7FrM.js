@@ -21518,7 +21518,6 @@ function(e) {
                 }
             })
         }),
-        e.post("https://www.bestmytest.com/ajax/bestmytest/get_question_menu_data", {}, function(t) {
             e("body").append('<div style="display:none;position:float;left:-99999px;" id="questions-menu-dom">' + t + "</div>"),
             $menu_elements = e("#questions-menu-dom"),
             e(".app-nav .question-nav-wrapper").each(function(t) {
@@ -21547,8 +21546,7 @@ function(e) {
                     "all" == t ? a.find("tr.tr-filter").show() : (a.find("tr.tr-filter").hide(),
                     a.find('tr[data-filter*="' + t + '"]').show())
                 })
-            }, 1e3)
-        })
+            }, 1e3);
     })
 }(jQuery);
 ;var ielts_prev_correct_answers = {};
