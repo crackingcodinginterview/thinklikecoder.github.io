@@ -1,3 +1,1026 @@
+/*!http://mths.be/placeholder v2.0.7 by @mathias*/
+;(function(window, document, $) {
+    var isOperaMini = Object.prototype.toString.call(window.operamini) == '[object OperaMini]';
+    var isInputSupported = 'placeholder'in document.createElement('input') && !isOperaMini;
+    var isTextareaSupported = 'placeholder'in document.createElement('textarea') && !isOperaMini;
+    var prototype = $.fn;
+    var valHooks = $.valHooks;
+    var propHooks = $.propHooks;
+    var hooks;
+    var placeholder;
+    if (isInputSupported && isTextareaSupported) {
+        placeholder = prototype.placeholder = function() {
+            return this;
+        }
+        ;
+        placeholder.input = placeholder.textarea = true;
+    } else {
+        placeholder = prototype.placeholder = function() {
+            var $this = this;
+            $this.filter((isInputSupported ? 'textarea' : ':input') + '[placeholder]').not('.placeholder').bind({
+                'focus.placeholder': clearPlaceholder,
+                'blur.placeholder': setPlaceholder
+            }).data('placeholder-enabled', true).trigger('blur.placeholder');
+            return $this;
+        }
+        ;
+        placeholder.input = isInputSupported;
+        placeholder.textarea = isTextareaSupported;
+        hooks = {
+            'get': function(element) {
+                var $element = $(element);
+                var $passwordInput = $element.data('placeholder-password');
+                if ($passwordInput) {
+                    return $passwordInput[0].value;
+                }
+                return $element.data('placeholder-enabled') && $element.hasClass('placeholder') ? '' : element.value;
+            },
+            'set': function(element, value) {
+                var $element = $(element);
+                var $passwordInput = $element.data('placeholder-password');
+                if ($passwordInput) {
+                    return $passwordInput[0].value = value;
+                }
+                if (!$element.data('placeholder-enabled')) {
+                    return element.value = value;
+                }
+                if (value == '') {
+                    element.value = value;
+                    if (element != safeActiveElement()) {
+                        setPlaceholder.call(element);
+                    }
+                } else if ($element.hasClass('placeholder')) {
+                    clearPlaceholder.call(element, true, value) || (element.value = value);
+                } else {
+                    element.value = value;
+                }
+                return $element;
+            }
+        };
+        if (!isInputSupported) {
+            valHooks.input = hooks;
+            propHooks.value = hooks;
+        }
+        if (!isTextareaSupported) {
+            valHooks.textarea = hooks;
+            propHooks.value = hooks;
+        }
+        $(function() {
+            $(document).delegate('form', 'submit.placeholder', function() {
+                var $inputs = $('.placeholder', this).each(clearPlaceholder);
+                setTimeout(function() {
+                    $inputs.each(setPlaceholder);
+                }, 10);
+            });
+        });
+        $(window).bind('beforeunload.placeholder', function() {
+            $('.placeholder').each(function() {
+                this.value = '';
+            });
+        });
+    }
+    function args(elem) {
+        var newAttrs = {};
+        var rinlinejQuery = /^jQuery\d+$/;
+        $.each(elem.attributes, function(i, attr) {
+            if (attr.specified && !rinlinejQuery.test(attr.name)) {
+                newAttrs[attr.name] = attr.value;
+            }
+        });
+        return newAttrs;
+    }
+    function clearPlaceholder(event, value) {
+        var input = this;
+        var $input = $(input);
+        if (input.value == $input.attr('placeholder') && $input.hasClass('placeholder')) {
+            if ($input.data('placeholder-password')) {
+                $input = $input.hide().next().show().attr('id', $input.removeAttr('id').data('placeholder-id'));
+                if (event === true) {
+                    return $input[0].value = value;
+                }
+                $input.focus();
+            } else {
+                input.value = '';
+                $input.removeClass('placeholder');
+                input == safeActiveElement() && input.select();
+            }
+        }
+    }
+    function setPlaceholder() {
+        var $replacement;
+        var input = this;
+        var $input = $(input);
+        var id = this.id;
+        if (input.value == '') {
+            if (input.type == 'password') {
+                if (!$input.data('placeholder-textinput')) {
+                    try {
+                        $replacement = $input.clone().attr({
+                            'type': 'text'
+                        });
+                    } catch (e) {
+                        $replacement = $('<input>').attr($.extend(args(this), {
+                            'type': 'text'
+                        }));
+                    }
+                    $replacement.removeAttr('name').data({
+                        'placeholder-password': $input,
+                        'placeholder-id': id
+                    }).bind('focus.placeholder', clearPlaceholder);
+                    $input.data({
+                        'placeholder-textinput': $replacement,
+                        'placeholder-id': id
+                    }).before($replacement);
+                }
+                $input = $input.removeAttr('id').hide().prev().attr('id', id).show();
+            }
+            $input.addClass('placeholder');
+            $input[0].value = $input.attr('placeholder');
+        } else {
+            $input.removeClass('placeholder');
+        }
+    }
+    function safeActiveElement() {
+        try {
+            return document.activeElement;
+        } catch (err) {}
+    }
+}(this, document, jQuery));
+;(function($) {
+    Drupal.behaviors.placeholder = {
+        attach: function() {
+            if (typeof ($("input[placeholder], textarea[placeholder]").placeholder()) == 'function') {
+                $("input[placeholder], textarea[placeholder], password[placeholder]").placeholder();
+            }
+        }
+    };
+}
+)(jQuery);
+;/*!
+* jQuery Cookie Plugin v1.4.1
+* https://github.com/carhartl/jquery-cookie
+*
+* Copyright 2006, 2014 Klaus Hartl
+* Released under the MIT license
+*/
+(function(factory) {
+    if (typeof define === 'function' && define.amd) {
+        define(['jquery'], factory);
+    } else if (typeof exports === 'object') {
+        factory(require('jquery'));
+    } else {
+        factory(jQuery);
+    }
+}(function($) {
+    var pluses = /\+/g;
+    function encode(s) {
+        return config.raw ? s : encodeURIComponent(s);
+    }
+    function decode(s) {
+        return config.raw ? s : decodeURIComponent(s);
+    }
+    function stringifyCookieValue(value) {
+        return encode(config.json ? JSON.stringify(value) : String(value));
+    }
+    function parseCookieValue(s) {
+        if (s.indexOf('"') === 0) {
+            s = s.slice(1, -1).replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+        }
+        try {
+            s = decodeURIComponent(s.replace(pluses, ' '));
+            return config.json ? JSON.parse(s) : s;
+        } catch (e) {}
+    }
+    function read(s, converter) {
+        var value = config.raw ? s : parseCookieValue(s);
+        return $.isFunction(converter) ? converter(value) : value;
+    }
+    var config = $.cookie = function(key, value, options) {
+        if (arguments.length > 1 && !$.isFunction(value)) {
+            options = $.extend({}, config.defaults, options);
+            if (typeof options.expires === 'number') {
+                var days = options.expires
+                  , t = options.expires = new Date();
+                t.setTime(+t + days * 864e+5);
+            }
+            return (document.cookie = [encode(key), '=', stringifyCookieValue(value), options.expires ? '; expires=' + options.expires.toUTCString() : '', options.path ? '; path=' + options.path : '', options.domain ? '; domain=' + options.domain : '', options.secure ? '; secure' : ''].join(''));
+        }
+        var result = key ? undefined : {};
+        var cookies = document.cookie ? document.cookie.split('; ') : [];
+        for (var i = 0, l = cookies.length; i < l; i++) {
+            var parts = cookies[i].split('=');
+            var name = decode(parts.shift());
+            var cookie = parts.join('=');
+            if (key && key === name) {
+                result = read(cookie, value);
+                break;
+            }
+            if (!key && (cookie = read(cookie)) !== undefined) {
+                result[name] = cookie;
+            }
+        }
+        return result;
+    }
+    ;
+    config.defaults = {};
+    $.removeCookie = function(key, options) {
+        if ($.cookie(key) === undefined) {
+            return false;
+        }
+        $.cookie(key, '', $.extend({}, options, {
+            expires: -1
+        }));
+        return !$.cookie(key);
+    }
+    ;
+}));
+;var $ = jQuery.noConflict();
+function IeltsTimerClass() {
+    this.type = '';
+    this.timerElem = 0;
+    this.timerContainer = '';
+    this.ended = function() {}
+    ;
+    this.hour = 0;
+    this.minutes = 0;
+    this.prevMinute = 0;
+    this.seconds = 0;
+    this.startingSeconds = 0;
+    this.popupTitle = '';
+    this.popupMsg = '';
+    this.timerInterval = 0;
+    this.reset = reset;
+    this.updateTimerValues = updateTimerValues;
+    this.updateTimerDisplay = updateTimerDisplay;
+    this.updateTimer = updateTimer;
+    this.showMinuteWarning = showMinuteWarning;
+    this.timerFinished = timerFinished;
+    this.isInitialized = false;
+    this.timerFinishedEvent = timerFinishedEvent;
+}
+IeltsTimerClass.prototype.start = function() {
+    if (this.isInitialized) {
+        $(this.timerContainer).show();
+        this.updateTimer(this.seconds);
+        var that = this;
+        this.timerInterval = setInterval(function() {
+            --that.seconds;
+            that.updateTimer(that.seconds);
+            that.timerFinished();
+        }, 1000);
+    }
+}
+;
+IeltsTimerClass.prototype.setTimerElem = function(te) {
+    this.timerElem = te;
+}
+;
+IeltsTimerClass.prototype.setTimerContainer = function(tc) {
+    this.timerContainer = tc;
+}
+;
+IeltsTimerClass.prototype.initialize = function() {
+    this.isInitialized = true;
+}
+;
+IeltsTimerClass.prototype.setBootstrapPopupType = function(type) {
+    this.bootstrap_popup_type = type;
+}
+;
+IeltsTimerClass.prototype.setSeconds = function(s) {
+    this.seconds = s;
+    this.startingSeconds = s;
+}
+;
+IeltsTimerClass.prototype.setCurrentSeconds = function(s) {
+    this.seconds = s;
+}
+;
+IeltsTimerClass.prototype.getSeconds = function(s) {
+    return this.startingSeconds;
+}
+;
+IeltsTimerClass.prototype.getCurrentSeconds = function(s) {
+    return this.seconds;
+}
+;
+IeltsTimerClass.prototype.pause = function() {
+    clearInterval(this.timerInterval);
+}
+;
+IeltsTimerClass.prototype.stop = function() {
+    clearInterval(this.timerInterval);
+    this.reset();
+}
+;
+IeltsTimerClass.prototype.setEndedEvent = function(endedFunction) {
+    this.ended = endedFunction;
+}
+;
+IeltsTimerClass.prototype.removeEndedEvent = function() {
+    this.ended = function() {}
+    ;
+}
+;
+var updateTimer = function(s) {
+    this.updateTimerValues(s);
+    this.updateTimerDisplay();
+};
+var showMinuteWarning = function() {
+    if (this.minutes == 5 || this.minutes == 10) {
+        var i = 0;
+        var $thatTimer = $(this.timerElem);
+        var flash = setInterval(function() {
+            if (i % 2 == 0) {
+                $thatTimer.css({
+                    'color': '#ff7575'
+                });
+            } else {
+                $thatTimer.css({
+                    'color': '#fff'
+                });
+            }
+            if (++i >= 20) {
+                clearInterval(flash);
+                if (this.minutes == 5) {
+                    $thatTimer.css({
+                        'color': '#ff7575'
+                    });
+                } else {
+                    $thatTimer.css({
+                        'color': '#fff'
+                    });
+                }
+            }
+        }, 250);
+    } else if (this.minutes > 5) {
+        $(this.timerElem).css({
+            'color': '#fff'
+        });
+    }
+}
+var updateTimerValues = function(s) {
+    var exactHour = (s % 3600 == 0);
+    this.seconds = s;
+    this.hours = (s >= 3600) ? Math.floor((s / 60 / 60)) : 0;
+    this.minutes = (s >= 60) ? Math.floor((s / 60)) : 0;
+};
+var updateTimerDisplay = function() {
+    if (this.minutes >= 1 && this.prevMinute == this.minutes) {
+        return;
+    }
+    this.prevMinute = this.minutes;
+    var time = '';
+    var time_prefix = '<span class="timer-num">';
+    var time_postfix = '</span>';
+    if (this.seconds <= 0) {
+        time = time_prefix + '0' + time_postfix + ' seconds left';
+    } else {
+        var s = this.seconds % 60;
+        if (this.seconds < 60) {
+            var word = ' second';
+            if (this.seconds > 1) {
+                word += 's';
+            }
+            word += ' left';
+            time = time_prefix + this.seconds + time_postfix + word;
+        } else {
+            var word = ' minute';
+            if (this.minutes > 1) {
+                word += 's';
+            }
+            word += ' left';
+            time = time_prefix + this.minutes + time_postfix + word;
+        }
+        this.showMinuteWarning();
+    }
+    $(this.timerElem).html(time);
+};
+var reset = function() {
+    this.updateTimer(this.startingSeconds);
+};
+var timerFinished = function() {
+    if (this.seconds <= 0) {
+        this.isInitialized = false;
+        this.timerFinishedEvent(this.ended);
+        var that = this;
+        this.pause();
+        setTimeout(function() {
+            if (that.seconds > 0) {
+                that.stop();
+            }
+        }, 500);
+    }
+};
+var timerFinishedEvent = function(callback) {
+    callback();
+};
+function continueTimer(timerObj) {
+    timerObj.start();
+}
+function pauseTimer(timerObj) {
+    timerObj.pause();
+}
+function stopTimer(timerObj) {
+    timerObj.stop();
+}
+function setTimerSecs(timerObj, s) {
+    timerObj.setSeconds(s);
+    timerObj.stop();
+}
+function setTimerCurrentSecs(timerObj, s) {
+    timerObj.setCurrentSeconds(s);
+    timerObj.pause();
+}
+function restartTimer(timerObj) {
+    timerObj.stop();
+    timerObj.initialize();
+    timerObj.start();
+}
+function setTimerEndedEvent(timerObj, callback) {
+    timerObj.setEndedEvent(callback);
+}
+function setNextTimerSecs(timerObj) {
+    var s = timerObj.getSeconds();
+    switch (s) {
+    case 15:
+        setTimerSecs(timerObj, 45);
+        break;
+    case 30:
+    case 20:
+        setTimerSecs(timerObj, 60);
+        break;
+    default:
+        setTimerSecs(timerObj, 45);
+        break;
+    }
+}
+;var test_section = ''
+  , isMicroTest = false
+  , Timer = new IeltsTimerClass()
+  , showBeforeunloadMsg = true
+  , beforeunloadCountDown = false
+  , based_test_type = ''
+  , questionTypeTimes = []
+  , stateVars = {}
+  , test_id = $('.ielts-test-wrapper').attr('data-test-id')
+  , curSegment = 0
+  , pathNameCookie = 'test_state_object' + window.location.pathname.replace('/', '_')
+  , stateLoaded = loadState()
+  , screenfull = window.screenfull
+  , ielts_check_answer_is_correct = window.ielts_check_answer_is_correct;
+$ = jQuery.noConflict();
+based_test_type = $('.ielts-test-wrapper').attr('data-based-test-type');
+function scrollToTopScrollable() {
+    if ($('.scrollable.mCustomScrollbar').length > 0) {
+        $('.scrollable .mCSB_1_dragger_vertical').css({
+            'top': 0
+        });
+        $('.scrollable .mCSB_container').css({
+            'top': 0
+        });
+    }
+}
+function saveState() {
+    var ans = {};
+    if (test_section == 'l' || test_section == 'r') {
+        $('input:checked').each(function() {
+            ans[$(this).attr('id')] = 1;
+        });
+    }
+    var saveObj = {
+        answers: ans,
+        last_section: last_section,
+        timerSeconds: Timer.getCurrentSeconds(),
+    };
+    $.cookie.json = true;
+    var date = new Date();
+    date.setTime(date.getTime() + (30 * 1000));
+    $.cookie(pathNameCookie, saveObj, {
+        expires: date
+    });
+}
+function loadState() {
+    $.cookie.json = true;
+    stateVars = $.cookie(pathNameCookie);
+    $.removeCookie(pathNameCookie);
+    return (stateVars != undefined);
+}
+function setBeforeunloadMsg(bool) {
+    showBeforeunloadMsg = bool
+}
+function showBeforeunload() {
+    return showBeforeunloadMsg;
+}
+function startEndSectionSubmitTimer() {
+    setTimeout(function() {
+        $('.finish-test').trigger('click');
+    }, 60000);
+}
+function appendQuestionAdditionalFormInputs($me, i) {
+    var qtype = $me.attr('data-questiontype');
+    if (qtype) {
+        $me.append('<input type="hidden" name="qtype[' + i + ']" value="' + qtype + '" />');
+    }
+    if (questionTypeTimes[i].hasOwnProperty(qtype)) {
+        $me.append('<input type="hidden" name="qtimes[' + i + '][' + qtype + ']" value="' + questionTypeTimes[i][qtype] + '" />');
+    }
+}
+function startSavingAnswerScreen() {
+    $('body').append('<div class="modal-overlay saving-overaly" style="z-index: 1002; display: block; opacity: 0.8;"></div>');
+    $('.app-page-content').append('<div class="ajax-progress ajax-progress-throbber app-page-throbber saving-throbber" style="position:absolute;top:350px;left:0;right:0;margin:auto;z-index:9999999;text-align: center;"><div class="throbber center" style="margin:auto;left:0;right:0;position:absolute;">&nbsp;</div><br><br><div class="white-text">Submitting Answers...</div></div>');
+}
+function removeSavingAnswersScreen() {
+    setTimeout(function() {
+        $('.saving-overaly').remove();
+        $('.saving-throbber').remove();
+    }, 1000);
+}
+function getSubmittedTestData() {
+    var answers = {};
+    var choices = {};
+    var question_types = {};
+    var actual_points = 0;
+    var total_points = $('#ielts-test-answer-sheet input[type="text"]').length;
+    var score_data = {};
+    var score_index = (test_section == 'l') ? 'listening_score' : 'reading_score';
+    var ref_type_id = (test_section == 'l') ? 'ielts_listening' : 'ielts_academic_reading';
+    score_data[score_index] = [];
+    score_data['score'] = {};
+    score_data['qtypes'] = {};
+    $('#ielts-test-answer-sheet input[type="text"]').each(function() {
+        var choice = $.trim($(this).val())
+          , answer = $.trim($(this).data('answer'))
+          , question_type = $.trim($(this).data('question_type'))
+          , question_type_id = $.trim($(this).data('question_type_id'))
+          , nid = $(this).attr('data-nid')
+          , has_question_answer_options = ($(this).data('has_question_answer_options') == "1")
+          , score_object = {
+            'a': answer,
+            'c': choice,
+            't': 1
+        };
+        if (question_types[nid] === undefined) {
+            question_types[nid] = {};
+        }
+        if (question_types[nid][question_type_id] === undefined) {
+            question_types[nid][question_type_id] = {
+                correct: 0,
+                incorrect: 0
+            };
+        }
+        var is_correct = ielts_check_answer_is_correct(choice, answer, question_type, has_question_answer_options);
+        if (is_correct) {
+            score_object['s'] = 1;
+            question_types[nid][question_type_id]['correct']++;
+            actual_points++;
+        } else {
+            score_object['s'] = 0;
+            question_types[nid][question_type_id]['incorrect']++;
+        }
+        if (score_data['qtypes'][nid] === undefined) {
+            score_data['qtypes'][nid] = {};
+            score_data['qtypes'][nid]['questionTypes'] = {};
+            score_data['qtypes'][nid]['ref_id'] = nid;
+            score_data['qtypes'][nid]['ref_type_id'] = ref_type_id;
+        }
+        if (choices[nid] === undefined) {
+            choices[nid] = [];
+            answers[nid] = [];
+            score_data['score'][nid] = [];
+        }
+        score_data['score'][nid].push(score_object);
+        score_data[score_index].push(score_object);
+        choices[nid].push(choice);
+        answers[nid].push(answer);
+    });
+    for (var i in question_types) {
+        score_data['qtypes'][i]['questionTypes'] = question_types[i];
+    }
+    score_data['total'] = total_points;
+    score_data['total_score'] = actual_points;
+    score_data['correct'] = actual_points;
+    score_data['incorrect'] = total_points - actual_points;
+    score_data['answers'] = answers;
+    score_data['choices'] = choices;
+    return score_data;
+}
+function getSubmittedEssays() {
+    var essays = [];
+    $('.writing-textarea').each(function() {
+        essays.push($.trim($(this).val()));
+    });
+    return essays;
+}
+function userEnteredAllQuestions() {
+    var allAnswersFound = true;
+    $('#ielts-test-answer-sheet input').each(function() {
+        if (!$(this).val()) {
+            allAnswersFound = false;
+        }
+    });
+    return allAnswersFound;
+}
+function userFinishedAllEssays() {
+    var allAnswersFound = true;
+    $('.writing-textarea').each(function() {
+        if (!$(this).val()) {
+            allAnswersFound = false;
+        }
+    });
+    return allAnswersFound;
+}
+function saveAnswersAjax(column) {
+    var test_data = ((column == 'writing') ? getSubmittedEssays() : getSubmittedTestData());
+    $.post('/ajax/ielts/test/save-user-answers', {
+        data: test_data,
+        col: column,
+        tid: test_id
+    }, 'json').done(function(d) {
+        proceedLastSection();
+    }).fail(function(d) {
+        alert("Couldn't submit answers. Please try again. If the problem persists, contact info@bestmytest.com for support.");
+    }).always(function() {
+        removeSavingAnswersScreen();
+    });
+}
+function submitTestForm() {
+    setBeforeunloadMsg(false);
+    startSavingAnswerScreen();
+    if (test_section == 'r') {
+        saveAnswersAjax('reading');
+    } else if (test_section == 'l') {
+        stopTimer(Timer);
+        Timer.setSeconds(1800);
+        $('.transfer-time').removeClass('transfer-time');
+        saveAnswersAjax('listening');
+    } else if (test_section == 'w') {
+        saveAnswersAjax('writing');
+    } else {}
+}
+function proceedNextSection() {
+    reloadActiveSegment();
+    if ($('.practice-segment.active').next().length > 0) {
+        $('.practice-segment.active').removeClass('active').next().addClass('active');
+    }
+}
+function proceedPrevSection() {
+    reloadActiveSegment();
+    if ($('.practice-segment.active').prev().length > 0) {
+        $('.practice-segment.active').removeClass('active').prev().addClass('active');
+    }
+}
+function navNextSection() {
+    if ($('.practice-segment.active').next().hasClass('nav-segment')) {
+        $('.practice-segment.active').removeClass('active').next().addClass('active');
+    }
+}
+function navPrevSection() {
+    if ($('.practice-segment.active').prev().hasClass('nav-segment')) {
+        $('.practice-segment.active').removeClass('active').prev().addClass('active');
+    }
+}
+function proceedAnswerSheetSection() {
+    $('.practice-segment').removeClass('active');
+    $('.answer-sheet-segment').addClass('active');
+}
+function proceedLastSection() {
+    $('.ielts-test-nav').addClass('hide');
+    $('.practice-segment').removeClass('active');
+    $('.last-segment').addClass('active');
+    if (based_test_type == 'paper') {
+        $('.ielts-test-wrapper .test-minor').removeClass('push-l6 l6').addClass('hide');
+        $('.ielts-test-wrapper .test-main').removeClass('l6 pull-l6').removeClass('hide');
+        $('.toggle-question-content').addClass('hide-important');
+    }
+}
+function reloadActiveSegment() {
+    if (activeSegmentChanged()) {
+        $('.practice-segment').removeClass('active');
+        $('.practice-segment[data-test-segment="' + curSegment + '"]').addClass('active');
+        curSegment = 0;
+    }
+}
+function saveActiveSegment(num) {
+    if (!activeSegmentChanged()) {
+        curSegment = num;
+    }
+}
+function activeSegmentChanged() {
+    return (curSegment != 0);
+}
+function triggerBenchWarmer() {
+    $('.practice-segment.active').find('.audio-bench-warmer .jp-play').trigger('click');
+}
+function autoFillAnswerSheet() {
+    $('.practice-segment.question-segment').each(function() {
+        $(this).find('.ielts-node-question-wrapper input[type="text"]').each(function() {
+            var val = $(this).val();
+            if (val != undefined) {
+                var number = $(this).data('input-number');
+                $('.answer-sheet input[data-input-number="' + number + '"]').val(val);
+            }
+        });
+        $(this).find('.ielts-node-question-wrapper ul li input[type="radio"]').each(function() {
+            var name = $(this).attr('name');
+            var val = $('.ielts-node-question-wrapper ul li input[name="' + name + '"]:checked').val();
+            if (val != undefined) {
+                var number = $(this).data('input-number');
+                $('.answer-sheet input[data-input-number="' + number + '"]').val(val.toUpperCase());
+            }
+        });
+        $(this).find('.ielts-node-question-wrapper td.checkarea').each(function() {
+            var $td = $(this);
+            var $other_tds = $(this).parent('tr').find('.checkarea').not($td);
+            var number = $td.parent('tr').data('input-number');
+            if ($td.hasClass('clicked')) {
+                var val = $td.data('value');
+                $('.answer-sheet input[data-input-number="' + number + '"]').val(val.toUpperCase());
+            }
+        });
+    });
+}
+(function($) {
+    function getActualScreenWidth() {
+        var w = window
+          , d = document
+          , e = d.documentElement
+          , g = d.getElementsByTagName('body')[0]
+          , y = w.innerWidth || e.clientWidth || g.clientWidth;
+        return y;
+    }
+    $(document).ready(function() {
+        ws = getActualScreenWidth();
+        test_section = $('.practice-questions-wrapper').attr('data-section');
+        $('.intro-done').on('click', function(e) {
+            e.preventDefault();
+            $('.ielts-test-nav').removeClass('hide');
+        });
+        $('.finish-test').on('click', function(e) {
+            e.preventDefault();
+            setBeforeunloadMsg(false);
+            $(this).addClass('disabled').off();
+            $('body').append('<form class="complete_test_form hide" method="post"><input type="hidden" name="test_complete" value="1" /></form>');
+            setTimeout(function() {
+                $('form.complete_test_form').submit();
+            }, 250);
+        });
+        $('.submit-answers').on('click', function(e) {
+            e.preventDefault();
+            if (based_test_type == 'computer' && (test_section == 'r' || test_section == 'l')) {}
+            var ok = true;
+            setTimeout(function() {
+                if ((test_section == 'r' || test_section == 'l') && !userEnteredAllQuestions()) {
+                    ok = false;
+                    alert('The answer sheet is missing answers.');
+                } else if (test_section == 'w' && !userFinishedAllEssays()) {
+                    ok = false;
+                    alert('Please make sure both writing tasks are complete before submitting your essays.');
+                } else {
+                    ok = confirm('Are you sure you want to submit your answers?');
+                }
+                if (ok) {
+                    submitTestForm();
+                }
+            }, 100);
+        });
+        $('.ielts-test-nav .arrow-wrapper a').on('click', function(e) {
+            e.preventDefault();
+            saveActiveSegment($('.practice-segment.active').attr('data-test-segment'));
+            if ($(this).hasClass('next')) {
+                navNextSection();
+            } else if ($(this).hasClass('prev')) {
+                navPrevSection();
+            }
+            if ($('.passage-wrapper .passage, .part-wrapper .parts').length) {
+                var indexId = $('.practice-segment.nav-segment.active').attr('data-index');
+                $('.passage-wrapper .passage, .part-wrapper .parts').addClass('hide');
+                $('.passage-wrapper #passage-' + indexId + ', #part-' + indexId).removeClass('hide');
+            }
+            scrollToTopScrollable();
+        });
+        $('.link-block .link').on('click', function(e) {
+            e.preventDefault();
+            $('.link-block .link').removeClass('active');
+            var q = $(this).data('question');
+            $(this).addClass('active');
+            $('[data-input-number="' + q + '"]').focus();
+            if (!$('[data-input-number="' + q + '"]').closest('.collapsible-body').is(':visible')) {
+                $('[data-input-number="' + q + '"]').closest('.collapsible-body').prev('.collapsible-header').trigger('click');
+            }
+        });
+        $('input, .collapsible-header').on('focus click active keyup', function(e) {
+            var q = $(this).attr('data-input-number');
+            if (!q) {
+                q = $(this).next('.collapsible-body').find('input[data-input-number]:first').attr('data-input-number');
+            }
+            if (q) {
+                $('.link-block .link').removeClass('active');
+                $('.link-block .link[data-question="' + q + '"]').addClass('active');
+            }
+        });
+        $('#ielts-test-answer-sheet input').on('change', function(e) {
+            var q = $(this).attr('data-input-number');
+            $('.link-block .link').removeClass('active');
+            if (!$(this).val().toString().length) {
+                $('.link-block .link[data-question="' + q + '"]').addClass('active').removeClass('answered');
+            } else {
+                $('.link-block .link[data-question="' + q + '"]').addClass('active answered');
+                var $pLineBlock = $('.link-block .link[data-question="' + q + '"]').closest('.link-block');
+                if ($pLineBlock.find('.link.answered').length == $pLineBlock.find('.link').length) {
+                    $pLineBlock.addClass('complete');
+                }
+            }
+        });
+        if ($('.toggle-question-content').length > 0) {
+            $('.intro-done').on('click', function(e) {
+                $('.toggle-question-content').removeClass('hide-important');
+            });
+            $('.toggle-question-content a').on('click', function() {
+                if ($('.test-main').hasClass('hide')) {
+                    $('.test-main').removeClass('hide');
+                    $('.test-minor').addClass('hide');
+                } else {
+                    $('.test-main').addClass('hide');
+                    $('.test-minor').removeClass('hide');
+                }
+            });
+            if (GlobalJSIsMobile) {
+                $('.test-minor').addClass('hide');
+            }
+        }
+        $('.auto-fill').on('click', function(e) {
+            e.preventDefault();
+            autoFillAnswerSheet();
+        });
+        if (test_section == 'l') {
+            $('body').append('<a href="#!" class="listeningTimeTrackingInitBtn" style="display:none;"></a>');
+            var clicktimeoutid = 0
+              , questionSnapshot = []
+              , index = 0
+              , questionType = ''
+              , timerSetTimeVar = 0
+              , prevQIndex = false
+              , prevQType = '';
+            $('.question-type-snapshot').each(function() {
+                var queType = $(this).attr('data-questiontype');
+                var qtypetimeobj = {};
+                var qtypetimeobj2 = {};
+                qtypetimeobj[queType] = 0;
+                qtypetimeobj2[queType] = 0;
+                questionTypeTimes.push(qtypetimeobj);
+                questionSnapshot.push(qtypetimeobj2);
+            });
+            $('.listeningTimeTrackingInitBtn').on('click', function(e) {
+                e.preventDefault();
+                clearTimeout(timerSetTimeVar);
+                var startTime = Date.now();
+                timerSetTimeVar = setTimeout(function() {
+                    var $currentQTS = $('.question-type-snapshot:visible');
+                    if (prevQType) {
+                        var endtime = Date.now()
+                          , millis = (endtime - questionSnapshot[prevQIndex][prevQType])
+                          , elapsed = parseInt(Math.floor(millis / 1000))
+                          , prevElapsed = questionTypeTimes[prevQIndex][prevQType];
+                        questionTypeTimes[prevQIndex][prevQType] = elapsed + prevElapsed;
+                        prevQIndex = 0;
+                        prevQType = '';
+                    }
+                    if ($currentQTS.length > 0) {
+                        index = $('.question-type-snapshot').index($currentQTS);
+                        questionType = $currentQTS.attr('data-questiontype');
+                        if (questionType) {
+                            var intervalQTS = 0;
+                            intervalQTS = setInterval(function() {
+                                if (!prevQType) {
+                                    questionSnapshot[index][questionType] = startTime;
+                                    prevQIndex = index;
+                                    prevQType = questionType;
+                                    clearInterval(intervalQTS);
+                                }
+                            }, 100);
+                        }
+                    }
+                }, 500);
+            });
+        }
+        if (!beforeunloadCountDown) {
+            setTimeout(function() {
+                window.onbeforeunload = function(e) {
+                    if (showBeforeunload()) {
+                        var dialogText = 'Changes will not be saved. You sure you want to leave?';
+                        e.returnValue = dialogText;
+                        return dialogText;
+                    }
+                }
+                ;
+            }, 45000);
+            beforeunloadCountDown = true;
+        }
+        if ($('#toggleFullScreen').length > 0 && screenfull.enabled) {
+            $('#toggleFullScreen').on('click', function(e) {
+                e.preventDefault();
+                if (screenfull.isFullscreen) {
+                    screenfull.exit();
+                    $('#toggleFullScreen').text('Fullscreen');
+                } else {
+                    screenfull.request();
+                    $('#toggleFullScreen').text('Exit Fullscreen');
+                }
+            });
+        }
+        if ($('#exitTest').length > 0) {
+            $('#exitTest').on('click', function(e) {
+                setBeforeunloadMsg(false);
+                e.preventDefault();
+                suspend();
+            });
+        }
+        if ($('#end-timer').length > 0) {
+            $('#end-timer').on('click', function(e) {
+                e.preventDefault();
+                Timer.setSeconds(3);
+            });
+        }
+        if ($('#slider').length > 0) {
+            $.widget.bridge("jq_slider", $.ui.slider);
+            $("#slider").jq_slider({
+                min: 0,
+                max: 1,
+                step: 0.05,
+                value: 0.75,
+                slide: function(e, u) {
+                    jplayerChangeVolume(u.value);
+                }
+            });
+        }
+        setTimeout(function() {
+            if (stateLoaded) {
+                $('html').append("<div id='loading-saved-test-gif' style='display: block;z-index:999999999;position:absolute;top:0;left:0;height:100%;width:100%;background:rgba(255, 255, 255, 0.97);text-align: center;'><span style='position:relative;top:30%;line-height: 80px;font-style: italic;font-size: 32px;color: #2995BF;font-weight: 400;text-shadow: 1px 0 0px #B3B3B3;'>Please wait...<br><img src='/sites/all/modules/custom/ielts_test/images/loading.gif' /></span></div>");
+                setTimeout(function() {
+                    setLoadedState();
+                    $('#loading-saved-test-gif').remove();
+                }, 4500);
+            }
+        }, 500);
+    });
+    function jplayerChangeVolume(ratio) {
+        $('.jp-jplayer').jPlayer('volume', ratio);
+    }
+    function suspend() {
+        if (confirm('Are you sure you want to exit the test? You will lose all your current data for this section.')) {
+            window.location = $('#exitTest').attr('data-value');
+        }
+    }
+}
+)(jQuery);
+;(function($) {
+    $(document).ready(function() {
+        var timer_seconds = 1800;
+        var timeout_handler = 0;
+        var transfer_time = false;
+        Timer.type = 'l';
+        Timer.setSeconds(timer_seconds);
+        Timer.setTimerElem('#timeVal');
+        Timer.setTimerContainer('#timer');
+        $('.intro-done').on('click', function(e) {
+            $('#ielts-listening-superstar-test-start .jp-jplayer').jPlayer('stop');
+            $('.ielts-test-nav').removeClass('hide');
+            setTimeout(function() {
+                triggerBenchWarmer();
+                restartTimer(Timer);
+                stopTimer(Timer);
+            }, 500);
+        });
+        setTimerEndedEvent(Timer, function() {
+            if (transfer_time) {
+                submitTestForm();
+            }
+        });
+        $('.audio-super-stars .content-audio .field .jp-jplayer').on($.jPlayer.event.ended, function(e) {
+            $(this).parents('.audio-player-box').find('.end-audio .jp-jplayer').jPlayer('play');
+        });
+        $('.audio-super-stars .end-audio .jp-jplayer').on($.jPlayer.event.ended, function(e) {
+            $('.audio-player-box').removeClass('active');
+            $(this).parents('.audio-player-box').addClass('active');
+            scrollToTopScrollable();
+            reloadActiveSegment();
+            $('.practice-question-start.normal').trigger('click');
+            if ($('.answer-sheet-segment.active').length > 0) {
+                $('.answer-sheet-segment').find('.audio-bench-warmer .jp-play').trigger('click');
+                Timer.setSeconds(610);
+                $('.practice-questions-section > .paper').addClass('transfer-time');
+                navPrevSection();
+                transfer_time = true;
+                restartTimer(Timer);
+            } else {
+                triggerBenchWarmer();
+            }
+        });
+    });
+}
+)(jQuery);
+;
 !function(e) {
     "function" == typeof define && define.amd ? define(["jquery"], e) : "object" == typeof exports ? module.exports = e : e(jQuery)
 }(function(e) {
@@ -21518,6 +22541,7 @@ function(e) {
                 }
             })
         }),
+        e.post("/ajax/bestmytest/get_question_menu_data", {}, function(t) {
             e("body").append('<div style="display:none;position:float;left:-99999px;" id="questions-menu-dom">' + t + "</div>"),
             $menu_elements = e("#questions-menu-dom"),
             e(".app-nav .question-nav-wrapper").each(function(t) {
@@ -21546,7 +22570,8 @@ function(e) {
                     "all" == t ? a.find("tr.tr-filter").show() : (a.find("tr.tr-filter").hide(),
                     a.find('tr[data-filter*="' + t + '"]').show())
                 })
-            }, 1e3);
+            }, 1e3)
+        })
     })
 }(jQuery);
 ;var ielts_prev_correct_answers = {};
